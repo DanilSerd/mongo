@@ -575,6 +575,8 @@ namespace mongo {
         fastmodinsert = false;
         upsert = false;
         keyUpdates = 0;  // unsigned, so -1 not possible
+        timeForIo = 0; // time taken to perform io operations
+        ioAccesses = 0;
         
         exceptionInfo.reset();
         
@@ -623,6 +625,9 @@ namespace mongo {
         OPDEBUG_TOSTRING_HELP_BOOL( fastmodinsert );
         OPDEBUG_TOSTRING_HELP_BOOL( upsert );
         OPDEBUG_TOSTRING_HELP( keyUpdates );
+         OPDEBUG_TOSTRING_HELP( timeForIo );
+        OPDEBUG_TOSTRING_HELP( ioAccesses );
+       
         
         if ( extra.len() )
             s << " " << extra.str();
@@ -716,6 +721,8 @@ namespace mongo {
         OPDEBUG_APPEND_BOOL( fastmodinsert );
         OPDEBUG_APPEND_BOOL( upsert );
         OPDEBUG_APPEND_NUMBER( keyUpdates );
+        OPDEBUG_APPEND_NUMBER( (long long)timeForIo );
+        OPDEBUG_APPEND_NUMBER( (long long)ioAccesses );
 
         b.appendNumber( "numYield" , curop.numYields() );
         b.append( "lockStats" , curop.lockStat().report() );

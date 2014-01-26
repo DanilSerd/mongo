@@ -441,4 +441,18 @@ namespace mongo {
         return _targetEpochMicros - now;
     }
 
+
+    void CurOp::startPossibleIoMesure() {
+        _ioMesureStart = curTimeMicros64();
+    }
+
+    void CurOp::stopPossibleIoMesure() {
+        unsigned long taken = curTimeMicros64() - _ioMesureStart;
+        if (taken > 100){
+            _debug.timeForIo += taken;
+            _debug.ioAccesses++;
+        }
+        _ioMesureStart = 0;
+    }
+
 }

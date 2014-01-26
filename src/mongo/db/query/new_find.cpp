@@ -60,6 +60,7 @@
 #include "mongo/s/d_logic.h"
 #include "mongo/s/stale_exception.h"
 #include "mongo/util/mongoutils/str.h"
+#include "mongo/util/time_support.h"
 
 namespace {
 
@@ -347,7 +348,13 @@ namespace mongo {
             Runner::RunnerState state;
             while (Runner::RUNNER_ADVANCED == (state = runner->getNext(&obj, NULL))) {
                 // Add result to output buffer.
+                long long start = curTimeMicros64();
+                curop.startPossibleIoMesure();
                 bb.appendBuf((void*)obj.objdata(), obj.objsize());
+                curop.stopPossibleIoMesure();
+                long long taken = curTimeMicros64() - start;
+
+                log() << "Buffer append: " << taken << " | size: " << obj.objsize() << endl;
 
                 // Count the result.
                 ++numResults;
@@ -589,7 +596,14 @@ namespace mongo {
         while (Runner::RUNNER_ADVANCED == (state = runner->getNext(&obj, NULL))) {
             // Add result to output buffer. This is unnecessary if explain info is requested
             if (!isExplain) {
+                long long start = curTimeMicros64();
+                curop.startPossibleIoMesure();
                 bb.appendBuf((void*)obj.objdata(), obj.objsize());
+                curop.stopPossibleIoMesure();
+                long long taken = curTimeMicros64() - start;
+
+                log() << "Buffer append: " << taken << " | size: " << obj.objsize() << endl;
+                
             }
 
             // Count the result.

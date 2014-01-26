@@ -101,6 +101,8 @@ namespace mongo {
         bool fastmodinsert;  // upsert of an $operation. builds a default object
         bool upsert;         // true if the update actually did an insert
         int keyUpdates;
+        long timeForIo; // time taken to perform io operations
+        long ioAccesses;
 
         // error handling
         ExceptionInfo exceptionInfo;
@@ -316,6 +318,10 @@ namespace mongo {
          * @return a pointer to a matching op or NULL if no ops match
          */
         static CurOp* getOp(const BSONObj& criteria);
+
+        /** Start and stop posible mesure IO to get the time taken on IO**/
+        void startPossibleIoMesure();
+        void stopPossibleIoMesure();
     private:
         friend class Client;
         void _reset();
@@ -325,6 +331,7 @@ namespace mongo {
         CurOp * _wrapped;
         unsigned long long _start;
         unsigned long long _end;
+        unsigned long long _ioMesureStart;
         bool _active;
         bool _suppressFromCurop; // unless $all is set
         int _op;
