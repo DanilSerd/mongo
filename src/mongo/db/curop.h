@@ -101,8 +101,9 @@ namespace mongo {
         bool fastmodinsert;  // upsert of an $operation. builds a default object
         bool upsert;         // true if the update actually did an insert
         int keyUpdates;
-        long timeForIo; // time taken to perform io operations
-        long ioAccesses;
+        long long timeForIoMicros; // time taken to perform io operations
+        long long ioAccesses;
+        long long accessesNotInMemory;
 
         // error handling
         ExceptionInfo exceptionInfo;
@@ -322,6 +323,9 @@ namespace mongo {
         /** Start and stop posible mesure IO to get the time taken on IO**/
         void startPossibleIoMesure();
         void stopPossibleIoMesure();
+
+        /** Mesure the number of record accesses was not in memory **/
+        void incrimentAccessesNotInMemory(int numOfAccesses);
     private:
         friend class Client;
         void _reset();

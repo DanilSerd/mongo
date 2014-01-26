@@ -43,6 +43,7 @@
 #include "mongo/util/net/listen.h"
 #include "mongo/util/processinfo.h"
 #include "mongo/util/stack_introspect.h"
+#include "mongo/util/time_support.h"
 
 namespace mongo {
 
@@ -196,6 +197,7 @@ namespace mongo {
              * @return whether we know the page is in ram
              */
             bool access( size_t region , short offset , bool doHalf ) {
+                //log() << "accessing region: " << region << endl;
                 int regionHash = hash(region);
                 
                 SimpleMutex::scoped_lock lk( _lock );
@@ -240,6 +242,7 @@ namespace mongo {
              * @return the oldest timestamp we have
              */
             time_t addPages( unordered_set<size_t>* pages, Slice* mySlices ) {
+                //log() << "Add pages called";
                 time_t oldestTimestamp = std::numeric_limits<time_t>::max();
                 {
                     // by doing this, we're in the lock only about half as long as the naive way
@@ -314,8 +317,11 @@ namespace mongo {
 
             inline void resetIfNeeded( Data* data ) {
                 const long long now = Listener::getElapsedTimeMillis();
-                if (MONGO_unlikely(now - data->_lastReset > RotateTimeSecs*1000))
+                if (MONGO_unlikely(now - data->_lastReset > RotateTimeSecs*1000)){
+
                     reset(data);
+                }
+                    
             }
 
             inline size_t pageBitOf(size_t ptr) {
@@ -416,13 +422,14 @@ namespace mongo {
     
     volatile int __record_touch_dummy = 1; // this is used to make sure the compiler doesn't get too smart on us
     void Record::touch( bool entireRecrd ) const {
+        cc().curop()->startPossibleIoMesure();
         if ( _lengthWithHeaders > HeaderSize ) { // this also makes sure lengthWithHeaders is in memory
             const char * addr = _data;
             const char * end = _data + _netLength();
             for ( ; addr <= end ; addr += 2048 ) {
                 __record_touch_dummy += addr[0];
 
-                break; // TODO: remove this, pending SERVER-3711
+                //break; // TODO: remove this, pending SERVER-3711
                 
                 // note if this is a touch of a deletedrecord, we don't want to touch more than the first part. we may simply
                 // be updated the linked list and a deletedrecord could be gigantic.  similar circumstance just less extreme 
@@ -433,6 +440,7 @@ namespace mongo {
                     break;
             }
         }
+        cc().curop()->stopPossibleIoMesure();
     }
 
     static bool blockSupported = false;
@@ -490,13 +498,13 @@ namespace mongo {
         const size_t offset = page & 0x3f;
 
         const bool seen = ps::PointerTable::seen( ps::PointerTable::getData(), reinterpret_cast<size_t>(data));
+        //if (seen)
+         //   log() << "RECORD SEEN" << endl;
         if (seen || ps::rolling[ps::bigHash(region)].access( region , offset , false ) ) {
         
-#ifdef _DEBUG
             if ( blockSupported && ! ProcessInfo::blockInMemory(data) ) {
-                RARELY warning() << "we think data is in ram but system says no"  << endl;
+                log() << "we think data is in ram but system says no"  << endl;
             }
-#endif
             return true;
         }
 
@@ -507,11 +515,14 @@ namespace mongo {
             return false;
         }
 
-        return ProcessInfo::blockInMemory( const_cast<char*>(data) );
+        
+        bool inMem = ProcessInfo::blockInMemory( const_cast<char*>(data) );
+        return inMem;
     }
 
 
     Record* Record::accessed() {
+        //bool inMem = likelyInPhysicalMemory();
         const bool seen = ps::PointerTable::seen( ps::PointerTable::getData(), reinterpret_cast<size_t>(_data));
         if (!seen){
             const size_t page = (size_t)_data >> 12;
@@ -520,6 +531,7 @@ namespace mongo {
             ps::rolling[ps::bigHash(region)].access( region , offset , true );
         }
 
+        //log() << "DONE accessed for: " << (size_t)_data << " || " << inMem << " || " << likelyInPhysicalMemory() << endl;
         return this;
     }
     
@@ -530,13 +542,31 @@ namespace mongo {
     }
 
     void Record::_accessing() const {
-        if ( likelyInPhysicalMemory() )
+
+
+        //long long start = curTimeMicros();
+        //touch(true);
+        //long long taken = curTimeMicros() - start;
+
+        //log() << "ACCESSING Record: " << reinterpret_cast<size_t>(_data) << " | length: " << _lengthWithHeaders <<  " | touch: " << taken << endl;
+        if ( likelyInPhysicalMemory() ){
+            
+            
+            //log() << "IN Record: " << reinterpret_cast<size_t>(_data) << " | length: " << _lengthWithHeaders <<  endl; 
             return;
+
+        }
+        //log() << "NOT IN Record: " << reinterpret_cast<size_t>(_data) << " | length: " << _lengthWithHeaders << endl;
+
 
         const Client& client = cc();
         Database* db = client.database();
         
         recordStats.accessesNotInMemory.fetchAndAdd(1);
+
+        if (client.curop()){
+            client.curop()->incrimentAccessesNotInMemory(1);
+        }
         if ( db )
             db->recordStats().accessesNotInMemory.fetchAndAdd(1);
         
