@@ -234,6 +234,9 @@ namespace mongo {
 
         vector<QuerySolution*> solutions;
         QueryPlanner::plan(*canonicalQuery, plannerParams, &solutions);
+        for (vector<QuerySolution*>::const_iterator itter = solutions.begin(); itter != solutions.end(); ++itter){
+            log() << "<<<<<<SOLUTION>>>>>> \n\n" << (*itter)->toString() << "\n\n" << endl;
+        }
 
         /*
         for (size_t i = 0; i < solutions.size(); ++i) {
@@ -348,13 +351,9 @@ namespace mongo {
             Runner::RunnerState state;
             while (Runner::RUNNER_ADVANCED == (state = runner->getNext(&obj, NULL))) {
                 // Add result to output buffer.
-                long long start = curTimeMicros64();
-                curop.startPossibleIoMesure();
+                 ExtraProfiler::startIO(ExtraProfiler::GENERAL);
                 bb.appendBuf((void*)obj.objdata(), obj.objsize());
-                curop.stopPossibleIoMesure();
-                long long taken = curTimeMicros64() - start;
-
-                log() << "Buffer append: " << taken << " | size: " << obj.objsize() << endl;
+                 ExtraProfiler::stopIO(ExtraProfiler::GENERAL);
 
                 // Count the result.
                 ++numResults;
@@ -596,13 +595,9 @@ namespace mongo {
         while (Runner::RUNNER_ADVANCED == (state = runner->getNext(&obj, NULL))) {
             // Add result to output buffer. This is unnecessary if explain info is requested
             if (!isExplain) {
-                long long start = curTimeMicros64();
-                curop.startPossibleIoMesure();
+                ExtraProfiler::startIO(ExtraProfiler::GENERAL);
                 bb.appendBuf((void*)obj.objdata(), obj.objsize());
-                curop.stopPossibleIoMesure();
-                long long taken = curTimeMicros64() - start;
-
-                log() << "Buffer append: " << taken << " | size: " << obj.objsize() << endl;
+                ExtraProfiler::stopIO(ExtraProfiler::GENERAL);
                 
             }
 

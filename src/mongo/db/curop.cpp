@@ -442,21 +442,4 @@ namespace mongo {
     }
 
 
-    void CurOp::startPossibleIoMesure() {
-        _ioMesureStart = curTimeMicros64();
-    }
-
-    void CurOp::stopPossibleIoMesure() {
-        unsigned long taken = curTimeMicros64() - _ioMesureStart;
-        if (taken > 100){
-            _debug.timeForIoMicros += taken;
-            _debug.ioAccesses++;
-        }
-        _ioMesureStart = 0;
-    }
-
-    void CurOp::incrimentAccessesNotInMemory(int numOfAccesses){
-        _debug.accessesNotInMemory += numOfAccesses;
-    }
-
 }

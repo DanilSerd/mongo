@@ -43,7 +43,7 @@
 #include "mongo/util/net/listen.h"
 #include "mongo/util/processinfo.h"
 #include "mongo/util/stack_introspect.h"
-#include "mongo/util/time_support.h"
+ #include "mongo/db/stats/extra_profiler.h"
 
 namespace mongo {
 
@@ -422,7 +422,8 @@ namespace mongo {
     
     volatile int __record_touch_dummy = 1; // this is used to make sure the compiler doesn't get too smart on us
     void Record::touch( bool entireRecrd ) const {
-        cc().curop()->startPossibleIoMesure();
+        ExtraProfiler::startIO(ExtraProfiler::TOUCH);
+        log() << "REcord Touched" << endl;
         if ( _lengthWithHeaders > HeaderSize ) { // this also makes sure lengthWithHeaders is in memory
             const char * addr = _data;
             const char * end = _data + _netLength();
@@ -440,7 +441,7 @@ namespace mongo {
                     break;
             }
         }
-        cc().curop()->stopPossibleIoMesure();
+        ExtraProfiler::startIO(ExtraProfiler::TOUCH);
     }
 
     static bool blockSupported = false;
@@ -564,9 +565,6 @@ namespace mongo {
         
         recordStats.accessesNotInMemory.fetchAndAdd(1);
 
-        if (client.curop()){
-            client.curop()->incrimentAccessesNotInMemory(1);
-        }
         if ( db )
             db->recordStats().accessesNotInMemory.fetchAndAdd(1);
         

@@ -30,6 +30,7 @@
 
 #include "mongo/db/exec/working_set.h"
 #include "mongo/db/matcher/matchable.h"
+ #include "mongo/db/stats/extra_profiler.h"
 
 namespace mongo {
 
@@ -108,7 +109,10 @@ namespace mongo {
         static bool passes(WorkingSetMember* wsm, const MatchExpression* filter) {
             if (NULL == filter) { return true; }
             WorkingSetMatchableDocument doc(wsm);
-            return filter->matches(&doc, NULL);
+            ExtraProfiler::startIO(ExtraProfiler::FILTER);
+            bool m = filter->matches(&doc, NULL);
+            ExtraProfiler::stopIO(ExtraProfiler::FILTER);
+            return m;
         }
     };
 

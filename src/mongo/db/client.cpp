@@ -575,9 +575,7 @@ namespace mongo {
         fastmodinsert = false;
         upsert = false;
         keyUpdates = 0;  // unsigned, so -1 not possible
-        timeForIoMicros = 0; // time taken to perform io operations
-        ioAccesses = 0; // posible number of ios
-        accessesNotInMemory = 0;
+        extraP.reset();
         
         exceptionInfo.reset();
         
@@ -626,9 +624,6 @@ namespace mongo {
         OPDEBUG_TOSTRING_HELP_BOOL( fastmodinsert );
         OPDEBUG_TOSTRING_HELP_BOOL( upsert );
         OPDEBUG_TOSTRING_HELP( keyUpdates );
-         OPDEBUG_TOSTRING_HELP( timeForIoMicros );
-        OPDEBUG_TOSTRING_HELP( ioAccesses );
-        OPDEBUG_TOSTRING_HELP( accessesNotInMemory );
        
         
         if ( extra.len() )
@@ -651,6 +646,7 @@ namespace mongo {
             s << " reslen:" << responseLength;
         s << " " << executionTime << "ms";
         
+        s << extraP.report();
         return s.str();
     }
 
@@ -723,9 +719,6 @@ namespace mongo {
         OPDEBUG_APPEND_BOOL( fastmodinsert );
         OPDEBUG_APPEND_BOOL( upsert );
         OPDEBUG_APPEND_NUMBER( keyUpdates );
-        OPDEBUG_APPEND_NUMBER( timeForIoMicros );
-        OPDEBUG_APPEND_NUMBER( ioAccesses );
-        OPDEBUG_APPEND_NUMBER( accessesNotInMemory );
 
 
         b.appendNumber( "numYield" , curop.numYields() );
@@ -736,6 +729,7 @@ namespace mongo {
 
         OPDEBUG_APPEND_NUMBER( nreturned );
         OPDEBUG_APPEND_NUMBER( responseLength );
+        b.append("extraprofiler", extraP.toBSON());
         b.append( "millis" , executionTime );
 
         return true;
